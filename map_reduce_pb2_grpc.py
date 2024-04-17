@@ -24,6 +24,11 @@ class MapperStub(object):
                 request_serializer=map__reduce__pb2.reducer_to_mapper_file_read.SerializeToString,
                 response_deserializer=map__reduce__pb2.reducer_to_mapper_file_read_response.FromString,
                 )
+        self.is_alive = channel.unary_unary(
+                '/Mapper/is_alive',
+                request_serializer=map__reduce__pb2.is_alive_response.SerializeToString,
+                response_deserializer=map__reduce__pb2.is_alive_response.FromString,
+                )
 
 
 class MapperServicer(object):
@@ -41,6 +46,12 @@ class MapperServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def is_alive(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_MapperServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -53,6 +64,11 @@ def add_MapperServicer_to_server(servicer, server):
                     servicer.give_partition_data,
                     request_deserializer=map__reduce__pb2.reducer_to_mapper_file_read.FromString,
                     response_serializer=map__reduce__pb2.reducer_to_mapper_file_read_response.SerializeToString,
+            ),
+            'is_alive': grpc.unary_unary_rpc_method_handler(
+                    servicer.is_alive,
+                    request_deserializer=map__reduce__pb2.is_alive_response.FromString,
+                    response_serializer=map__reduce__pb2.is_alive_response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -98,6 +114,23 @@ class Mapper(object):
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
+    @staticmethod
+    def is_alive(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Mapper/is_alive',
+            map__reduce__pb2.is_alive_response.SerializeToString,
+            map__reduce__pb2.is_alive_response.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
 
 class ReducerStub(object):
     """Missing associated documentation comment in .proto file."""
@@ -113,12 +146,23 @@ class ReducerStub(object):
                 request_serializer=map__reduce__pb2.master_to_reducer_task_assign.SerializeToString,
                 response_deserializer=map__reduce__pb2.master_to_reducer_task_assign_response.FromString,
                 )
+        self.is_alive = channel.unary_unary(
+                '/Reducer/is_alive',
+                request_serializer=map__reduce__pb2.is_alive_response.SerializeToString,
+                response_deserializer=map__reduce__pb2.is_alive_response.FromString,
+                )
 
 
 class ReducerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def reducer_assign_task(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def is_alive(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -131,6 +175,11 @@ def add_ReducerServicer_to_server(servicer, server):
                     servicer.reducer_assign_task,
                     request_deserializer=map__reduce__pb2.master_to_reducer_task_assign.FromString,
                     response_serializer=map__reduce__pb2.master_to_reducer_task_assign_response.SerializeToString,
+            ),
+            'is_alive': grpc.unary_unary_rpc_method_handler(
+                    servicer.is_alive,
+                    request_deserializer=map__reduce__pb2.is_alive_response.FromString,
+                    response_serializer=map__reduce__pb2.is_alive_response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -156,5 +205,22 @@ class Reducer(object):
         return grpc.experimental.unary_unary(request, target, '/Reducer/reducer_assign_task',
             map__reduce__pb2.master_to_reducer_task_assign.SerializeToString,
             map__reduce__pb2.master_to_reducer_task_assign_response.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def is_alive(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Reducer/is_alive',
+            map__reduce__pb2.is_alive_response.SerializeToString,
+            map__reduce__pb2.is_alive_response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

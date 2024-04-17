@@ -78,10 +78,12 @@ class mapper_to_master_file_read_response(_message.Message):
     def __init__(self, point: _Optional[str] = ...) -> None: ...
 
 class reducer_to_mapper_file_read(_message.Message):
-    __slots__ = ("partition_index",)
+    __slots__ = ("partition_index", "reducer_id")
     PARTITION_INDEX_FIELD_NUMBER: _ClassVar[int]
+    REDUCER_ID_FIELD_NUMBER: _ClassVar[int]
     partition_index: int
-    def __init__(self, partition_index: _Optional[int] = ...) -> None: ...
+    reducer_id: int
+    def __init__(self, partition_index: _Optional[int] = ..., reducer_id: _Optional[int] = ...) -> None: ...
 
 class reducer_to_mapper_file_read_response(_message.Message):
     __slots__ = ("data_points", "success")
@@ -90,3 +92,9 @@ class reducer_to_mapper_file_read_response(_message.Message):
     data_points: _containers.RepeatedCompositeFieldContainer[mapper_to_reducer_data_point]
     success: bool
     def __init__(self, data_points: _Optional[_Iterable[_Union[mapper_to_reducer_data_point, _Mapping]]] = ..., success: bool = ...) -> None: ...
+
+class is_alive_response(_message.Message):
+    __slots__ = ("alive",)
+    ALIVE_FIELD_NUMBER: _ClassVar[int]
+    alive: bool
+    def __init__(self, alive: bool = ...) -> None: ...

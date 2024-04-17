@@ -38,15 +38,21 @@ message mapper_to_master_file_read_response {
 }
 message reducer_to_mapper_file_read{
     int32 partition_index = 1;
+    int32 reducer_id = 2;
 }
 message reducer_to_mapper_file_read_response{
     repeated mapper_to_reducer_data_point data_points = 1;
     bool success = 2;
 }
+message is_alive_response {
+    bool alive = 1;
+}
 service Mapper {
     rpc assign_task(master_to_mapper_task_assign) returns (master_to_mapper_task_assign_response) {}
     rpc give_partition_data(reducer_to_mapper_file_read) returns (reducer_to_mapper_file_read_response) {}
+    rpc is_alive(is_alive_response) returns (is_alive_response) {}  
 }
 service Reducer{
     rpc reducer_assign_task(master_to_reducer_task_assign) returns (master_to_reducer_task_assign_response) {}
+    rpc is_alive(is_alive_response) returns (is_alive_response) {}  
 }
