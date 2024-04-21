@@ -51,21 +51,17 @@ class Reduce(map_reduce_grpc.ReducerServicer):
         self.num_reducers_name = ["r1","r2"]
 
         self.fetched_data = []
-        self.fetched_completed = [False for i in range(self.num_mappers)]
 
+        print(f"Reduce task {self.partition_index}")
+
+        print(f"Reduce Task {self.partition_index}")
+        with open("Data/Reducers/R"+str(self.partition_index)+".txt", "w") as f:
+            f.write(f"key,x,y\n")
         # doing fetching data from the mappers (shuffle)
-        flag = False
-        # while(not flag):
-        #     flag = True
+
+        
         for i in range(self.num_mappers):
-            if (self.fetched_completed[i]==1):
-                continue
             ret = self.fetch(self.mapper_port[i])
-            # if (ret == True):
-            #     self.fetched_completed[i] = 1
-            # else:
-            #     self.fetched_completed[i] = 0
-            # flag = False
         
         # sorting the fetched data
         # print(self.fetched_data)
@@ -73,11 +69,14 @@ class Reduce(map_reduce_grpc.ReducerServicer):
             print(">> Press ctrl+c to stop the mapper and check fault tolerance")
             time.sleep(10)
             print(">> Time finished")
-
         
-        self.fetched_data = sorted(self.fetched_data,key = custom_sort_cond)
-        # print(self.fetched_data)
-        # calling the reduce
+        if (len(self.fetched_data) == 0):
+            print("No data to reduce")
+            print(f"partition index {self.partition_index}")
+            return master_to_reducer_task_assign_response(success=True)
+        
+
+        self.fetched_data = sorted(self.fetched_data, key=lambda item: item['key'])
         self.reduce()
 
         if (probab_flag(0.7)):
@@ -94,16 +93,22 @@ class Reduce(map_reduce_grpc.ReducerServicer):
         
         if (response.success):
             print(f"reducer {self._id} fetched data from mapper {port}")
-            self.fetched_data += response.data_points
+            data = response.data_points
+            if (len(data) != 0):
+                dir = []
+                for i in range(len(data)):
+                    dir.append({'key':data[i].key,'x':data[i].value.x, 'y': data[i].value.y ,'count':data[i].count})
+                data = dir
+            self.fetched_data += data
             return True
         else:
+            print('Error in fetching data')
             return False
 
     def reduce(self):
         # now we have the data in self.fetched_data
         # we will now reduce it
-        with open("Data/Reducers/R"+str(self._id)+".txt", "w") as f:
-            f.write("")
+        
         length = len(self.fetched_data)
         if (length == 0):
             print("No data to reduce")
@@ -113,24 +118,24 @@ class Reduce(map_reduce_grpc.ReducerServicer):
         cnt = 0
         point = data_point(x=0, y=0)
         while(idx < length):
-            k = self.fetched_data[idx].key
-            point.x = self.fetched_data[idx].value.x
-            point.y = self.fetched_data[idx].value.y
-            cnt = self.fetched_data[idx].count
+            k = self.fetched_data[idx]['key']
+            point.x = self.fetched_data[idx]['x']
+            point.y = self.fetched_data[idx]['y']
+            cnt = self.fetched_data[idx]['count']
             idx += 1
             
             if (idx == length):
                 break
-            while(self.fetched_data[idx].key == k):
-                point.x += self.fetched_data[idx].value.x
-                point.y += self.fetched_data[idx].value.y
-                cnt += self.fetched_data[idx].count
-                k = self.fetched_data[idx].key
+            while(self.fetched_data[idx]['key'] == k):
+                point.x += self.fetched_data[idx]['x']
+                point.y += self.fetched_data[idx]['y']
+                cnt += self.fetched_data[idx]['count']
+                k = self.fetched_data[idx]['key']
                 idx += 1
                 if (idx == length):
                     break
-            
-            with open("Data/Reducers/R"+str(self._id)+".txt", "a") as f:
+            print("key : ",k)
+            with open("Data/Reducers/R"+str(self.partition_index)+".txt", "a") as f:
                 f.write(str(k) + "," + str(point.x/cnt) + "," + str(point.y/cnt) + "\n")
             
             point.x = 0

@@ -73,30 +73,6 @@ input_file_path = "Data/Input/points.txt"
 # reading the input file 
 data = pd.read_csv(input_file_path, header=None)
 
-def map(args):
-    
-    port = int(args)
-    print(f"mapper-{port} pid : ",os.getpid())
-    print(f"Mapper is running on the port : {port}")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=500))
-    map_reduce_grpc.add_MapperServicer_to_server(Mapper(),server)
-    server.add_insecure_port(f"127.0.0.1:{port}")
-    server.start()
-    server.wait_for_termination()
-    print("Mapper Terminated")
-    return
-
-def reduce(args):
-    port = int(args)
-    print(f"reducer-{port} pid : ",os.getpid())
-    print(f"Reducer is running on the port : {port}")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=500))
-    map_reduce_grpc.add_ReducerServicer_to_server(Reduce(),server)
-    server.add_insecure_port(f"127.0.0.1:{port}")
-    server.start()
-    server.wait_for_termination()
-    return
-
 class Master():
     def __init__(self,M,R,k,Iterations,data):
         delete_files_in_directory("Data/Mappers")
@@ -126,10 +102,10 @@ class Master():
 
         # lists for fault tolerance
         self.active_mappers = [0 for i in range(self.num_mappers)]
-        self.mappers_completed = [0 for i in range(self.num_mappers)]
+        self.mappers_completed = [0 for i in range(self.M)]
 
         self.active_reducers = [0 for i in range(self.num_reducers)]
-        self.reducers_completed = [0 for i in range(self.num_reducers)]
+        self.reducers_completed = [0 for i in range(self.R)]
 
         self.assign_tasks_to_mappers()
 
@@ -164,56 +140,51 @@ class Master():
                 t2 = threading.Thread(target=self.send_heart_beat_reducer, args=(i,))
                 t2.start()
     
-    def thread_assign_map(self,i,start_index,end_index,port_index):
+    def thread_assign_map(self,map_task,i,start_index,end_index,port_index):
         try:
             channel = grpc.insecure_channel(f'127.0.0.1:{self.mapperPort[port_index]}')
             stub = map_reduce_grpc.MapperStub(channel)
-            response = stub.assign_task(master_to_mapper_task_assign(start_index = start_index, end_index= end_index, k_clusters=self.centeroids, data_points=self.data[start_index:end_index], M = self.M, R = self.R, k = self.k,id = port_index))
+            response = stub.assign_task(master_to_mapper_task_assign(start_index = start_index, end_index= end_index, k_clusters=self.centeroids, data_points=self.data[start_index:end_index], M = self.M, R = self.R, k = self.k,id = port_index,map_task = map_task))
             if (response.success):
-                self.mappers_completed[i] = 1
+                self.mappers_completed[map_task] = 1
                 self.active_mappers[i] = 1
-                print(f"Map task done by mapper {i}")
+                print(f"Map task {map_task} done by mapper {i}")
             else :
-                self.mappers_completed[i] = 0
+                self.mappers_completed[map_task] = 0
                 self.active_mappers[i] = 1
-                print(f"Map task was not done by mapper {i}")
-                print("Reassigning task to the mapper")
-                self.thread_assign_map(i,start_index,end_index,port_index)
+                print(f"Map task {map_task} was not done by mapper {i}")
+                print(f"Reassigning map task {map_task} to the mapper {i}")
+                self.thread_assign_map(map_task,i,start_index,end_index,port_index)
                 
 
         except Exception as e:
-            print(f"Unfortunatly the mapper {i} is offline\n")
+            print(f"Mapper {i} is offline, {map_task} was not completed\n")
             # since previous mapper failed creating a new mapper
-            self.mappers_completed[i] = 0
+            self.mappers_completed[map_task] = 0
             self.active_mappers[i] = 0
-            # self.thread_assign_map(i,start_index,end_index,port_index)
 
      
-    def thread_assign_reduce(self,i):
+    def thread_assign_reduce(self,reduce_task, i):
         try:
-            print(f"mapper ports : {self.mapperPort}")
             channel = grpc.insecure_channel(f'127.0.0.1:{self.reducerPort[i]}')
             stub = map_reduce_grpc.ReducerStub(channel)
             # response1 = stub.is_alive(is_alive_response(alive = False))
             # print(i,response1)
-            response = stub.reducer_assign_task(master_to_reducer_task_assign(partition_index = i, mapper_port = self.mapperPort, M = self.M, R = self.R, k = self.k, id = i))
-            
-            print(i,response)
+            response = stub.reducer_assign_task(master_to_reducer_task_assign(partition_index = reduce_task, mapper_port = self.mapperPort, M = self.M, R = self.R, k = self.k, id = i))
             
             if (response.success):
-                self.reducers_completed[i] = 1
+                self.reducers_completed[reduce_task] = 1
                 self.active_reducers[i] = 1
-                print(f"Reduce task done by reducer {i}")
+                print(f"Reduce task {reduce_task} done by reducer {i}")
             else:
-                self.reducers_completed[i] = 0
+                self.reducers_completed[reduce_task] = 0
                 self.active_reducers[i] = 1
-                print(f"Reduce task was not done by reducer {i}")
-                print("Reassigning task to the reducer")
-                self.thread_assign_reduce(i)
+                print(f"Reduce task {reduce_task} was not done by reducer {i}")
+                print(f"Reassigning task  {reduce_task} to the reducer {i}")
+                self.thread_assign_reduce(reduce_task,i)
         except Exception as e:
-            # traceback.print_exc()
-            print(f"Unfortunatly the reducer {i} is not working offline\n")
-            self.reducers_completed[i] = 0
+            print(f"reducer {i} is not working offline, reduce task {reduce_task} was not completed\n")
+            self.reducers_completed[reduce_task] = 0
             self.active_reducers[i] = 0
 
         
@@ -230,20 +201,29 @@ class Master():
         # while ((0 in self.mappers_completed)):
         
         while((0 in self.mappers_completed)):
-            print(f"Running mapper in {10} seconds")
-            map_threads = []
-            time.sleep(10)
-            for i in range(self.num_mappers):
-                if (self.mappers_completed[i]==True):
-                    continue
-
-                start_index = i*(len(self.data)//self.M)
-                end_index = (i+1)*(len(self.data)//self.M)
-                map_thread = threading.Thread(target = self.thread_assign_map, args=(i,start_index,end_index,i))
-                map_threads.append(map_thread)
-                map_thread.start()
-            for thread in map_threads:
-                thread.join()
+            print(f"Running mapper in {2} seconds")
+            
+            time.sleep(2)
+            for i in range(self.M):
+                map_threads = []
+                for j in range(self.num_mappers):
+                    if (i==self.M):
+                        break
+                    if (self.mappers_completed[i]==True):
+                        continue
+                    print(f"Starting map task {i+1} ")
+                    start_index = i*(len(self.data)//self.M)
+                    end_index = (i+1)*(len(self.data)//self.M)
+                    map_thread = threading.Thread(target = self.thread_assign_map, args=(i,i%self.num_mappers,start_index,end_index,i%self.num_mappers))
+                    map_threads.append(map_thread)
+                    map_thread.start()
+                    i += 1
+                for thread in map_threads:
+                    thread.join()
+                
+                if (0 not in self.mappers_completed):
+                    break
+                i -= 1
             print("Mappers threads joined")
 
 
@@ -255,40 +235,35 @@ class Master():
         # while ((0 in self.mappers_completed)):
         
         while((0 in self.reducers_completed)):
-            print(f"Running reducer in {10} seconds")
-            time.sleep(10)
-            reduce_threads = []
-            for i in range(self.num_reducers):
-                if (self.reducers_completed[i]==True):
-                    continue
-                reduce_thread = threading.Thread(target = self.thread_assign_reduce, args=(i,))
-                reduce_threads.append(reduce_thread)
-                reduce_thread.start()
-            for thread in reduce_threads:
-                thread.join()
+            print(f"Running reducer in {2} seconds")
+            time.sleep(2)
+            
+            for i in range(0,self.R,self.num_reducers):
+                reduce_threads = []
+                for j in range(self.num_reducers):
+                    if (i==self.R):
+                        break
+                    if (self.reducers_completed[i]==True):
+                        continue
+                    reduce_thread = threading.Thread(target = self.thread_assign_reduce, args=(i, i%self.num_reducers,))
+                    reduce_threads.append(reduce_thread)
+                    reduce_thread.start()
+                    i += 1
+                for thread in reduce_threads:
+                    thread.join()
+                if (0 not in self.reducers_completed):
+                    break
+                i -= 1
             print("Reducer threads joined")
 
-
-        for i in range(self.num_reducers):
-            try:
-                reducer_data = pd.read_csv(f"Data/Reducers/R{i}.txt", header=None)
-            except pd.errors.EmptyDataError as e:
-                print("Empty -- file---------------------------------------------------")
-                continue
-
-            for index, rows in reducer_data.iterrows():
-                self.centeroids[int(rows[0]-1)] = data_point(x=rows[1], y=rows[2])
-        
-        print("------------------------------------")
-        print(f"Iteration {self.itr - self.Iterations}: {self.centeroids}")
-        print("------------------------------------")
+        print(f"-----------Iteration {self.itr - self.Iterations} completed-----------")
         self.Iterations -= 1
         # lists for fault tolerance
         self.active_mappers = [0 for i in range(self.num_mappers)]
-        self.mappers_completed = [0 for i in range(self.num_mappers)]
+        self.mappers_completed = [0 for i in range(self.M)]
 
         self.active_reducers = [0 for i in range(self.num_reducers)]
-        self.reducers_completed = [0 for i in range(self.num_reducers)]
+        self.reducers_completed = [0 for i in range(self.R)]
 
         self.assign_tasks_to_mappers()
 

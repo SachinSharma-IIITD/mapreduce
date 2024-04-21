@@ -14,7 +14,7 @@ class data_point(_message.Message):
     def __init__(self, x: _Optional[float] = ..., y: _Optional[float] = ...) -> None: ...
 
 class master_to_mapper_task_assign(_message.Message):
-    __slots__ = ("start_index", "end_index", "k_clusters", "data_points", "M", "R", "k", "id")
+    __slots__ = ("start_index", "end_index", "k_clusters", "data_points", "M", "R", "k", "id", "map_task")
     START_INDEX_FIELD_NUMBER: _ClassVar[int]
     END_INDEX_FIELD_NUMBER: _ClassVar[int]
     K_CLUSTERS_FIELD_NUMBER: _ClassVar[int]
@@ -23,6 +23,7 @@ class master_to_mapper_task_assign(_message.Message):
     R_FIELD_NUMBER: _ClassVar[int]
     K_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
+    MAP_TASK_FIELD_NUMBER: _ClassVar[int]
     start_index: int
     end_index: int
     k_clusters: _containers.RepeatedCompositeFieldContainer[data_point]
@@ -31,7 +32,8 @@ class master_to_mapper_task_assign(_message.Message):
     R: int
     k: int
     id: int
-    def __init__(self, start_index: _Optional[int] = ..., end_index: _Optional[int] = ..., k_clusters: _Optional[_Iterable[_Union[data_point, _Mapping]]] = ..., data_points: _Optional[_Iterable[_Union[data_point, _Mapping]]] = ..., M: _Optional[int] = ..., R: _Optional[int] = ..., k: _Optional[int] = ..., id: _Optional[int] = ...) -> None: ...
+    map_task: int
+    def __init__(self, start_index: _Optional[int] = ..., end_index: _Optional[int] = ..., k_clusters: _Optional[_Iterable[_Union[data_point, _Mapping]]] = ..., data_points: _Optional[_Iterable[_Union[data_point, _Mapping]]] = ..., M: _Optional[int] = ..., R: _Optional[int] = ..., k: _Optional[int] = ..., id: _Optional[int] = ..., map_task: _Optional[int] = ...) -> None: ...
 
 class master_to_reducer_task_assign(_message.Message):
     __slots__ = ("partition_index", "mapper_port", "M", "R", "k", "id")
