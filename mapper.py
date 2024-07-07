@@ -112,17 +112,19 @@ class Mapper(map_reduce_grpc.MapperServicer):
         # return reducer_to_mapper_file_read_response(data_points = [], success=True)
         partition_index = request.partition_index
         # print(f"Partition {partition_index} requested from Mapper {self.id}")
-        
-        try:
-            data_ = pd.read_csv(f"Data/Mappers/M{self.id}/Partition_{partition_index}.txt", header=None)
-        except pd.errors.EmptyDataError as e:
-            return reducer_to_mapper_file_read_response(data_points = [], success=True)
-        except Exception as e:
-            return reducer_to_mapper_file_read_response(data_points = [], success=True)
+        ret = []
+        for idx in range(self.id,self.M,self.num_mappers):
+            try:
+                data_ = pd.read_csv(f"Data/Mappers/M{idx}/Partition_{partition_index}.txt", header=None)
+            except pd.errors.EmptyDataError as e:
+                continue
+            except Exception as e:
+                continue
 
-        data_points = convert_to_mapper_to_reducer_data_point(data_.iloc[1:,:])
+            data_points = convert_to_mapper_to_reducer_data_point(data_.iloc[1:,:])
+            ret += data_points
 
-        return reducer_to_mapper_file_read_response(data_points = data_points, success=True)
+        return reducer_to_mapper_file_read_response(data_points = ret, success=True)
 
 checkFlag = int(input("checkFlag : "))
 

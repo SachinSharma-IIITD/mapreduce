@@ -183,6 +183,7 @@ class Master():
                 print(f"Reassigning task  {reduce_task} to the reducer {i}")
                 self.thread_assign_reduce(reduce_task,i)
         except Exception as e:
+            # print(e)
             print(f"reducer {i} is not working offline, reduce task {reduce_task} was not completed\n")
             self.reducers_completed[reduce_task] = 0
             self.active_reducers[i] = 0
@@ -204,7 +205,7 @@ class Master():
             print(f"Running mapper in {2} seconds")
             
             time.sleep(2)
-            for i in range(self.M):
+            for i in range(0,self.M,self.num_mappers):
                 map_threads = []
                 for j in range(self.num_mappers):
                     if (i==self.M):
